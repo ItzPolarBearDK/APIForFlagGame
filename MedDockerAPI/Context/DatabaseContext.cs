@@ -2,7 +2,7 @@
 using System;
 using MedDockerAPI.Models;
 using MedDockerAPI.Controllers;
-using MedDockerAPI.Models;
+
 
 namespace MedDockerAPI.Context
 {
