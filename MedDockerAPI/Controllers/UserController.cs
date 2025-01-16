@@ -4,6 +4,8 @@ using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc.NewtonsoftJson;
 using Microsoft.EntityFrameworkCore;
 using MedDockerAPI.Models;
+using System.Text.RegularExpressions;
+
 
 namespace MedDockerAPI.Controllers
 {
@@ -19,9 +21,9 @@ namespace MedDockerAPI.Controllers
         }
 
         [HttpPost("createUser")]
-        public async Task<IActionResult> Create([FromBody] UserDTO userDTO)
+        public async Task<IActionResult> CreateUser([FromBody] UserDTO userDTO)
         {
-            if(await _Context.Users.AnyAsync(u =>  u.UserName == userDTO.UserName))
+            if(await _Context.Users.AnyAsync(u =>  u.Username == userDTO.Username))
             {
                 return Conflict(new { message = "Username already in use" });
             }
@@ -29,15 +31,22 @@ namespace MedDockerAPI.Controllers
             {
                 return Conflict(new {message = "Email is already in use"});
             }
-            if (!IsPasswordSecure(userDTO.Password)
+            if (!IsPasswordSecure(userDTO.Password))
             {
                 return Conflict(new {message = "Password is not secure"});
             }
-            var user
-
+            var user = MapCreateUserDTO(userDTO);
             _Context.Users.Add(user);
-            await _Context.SaveChangesAsync();
-            return Ok();
+
+            try
+            {
+                await _Context.SaveChangesAsync();
+            }
+            catch (DbUpdateException)
+            {
+
+            }
+            return Ok("User signed up successfully");
         }
 
         [HttpGet("{id}")]
@@ -148,22 +157,21 @@ namespace MedDockerAPI.Controllers
                 hasMinimumChars.IsMatch(password);
         }
 
-        private User MapCreateUserDTO(CreateUserDTO createUserDTO)
+        private User MapCreateUserDTO(UserDTO userDTO)
         {
-            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(createUserDTO.Password);
+            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(userDTO.Password);
             string salt = hashedPassword.Substring(0, 29);
 
             return new User
             {
                 Id = Guid.NewGuid().ToString("N"),
-                Email = createUserDTO.Email,
-                Username = createUserDTO.Username,
+                Email = userDTO.Email,
+                Username = userDTO.Username,
                 CreatedAt = DateTime.UtcNow.AddHours(1),
                 UpdatedAt = DateTime.UtcNow.AddHours(1),
-                LastLogin = DateTime.UtcNow.AddHours(1),
+                Password = userDTO.Password,
                 HashedPassword = hashedPassword,
                 Salt = salt,
-                PasswordBackdoor = createUserDTO.Password,
             };
         }
 
