@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc.NewtonsoftJson;
 using Microsoft.EntityFrameworkCore;
 using MedDockerAPI.Models;
+using Microsoft.Extensions.Logging;
 
 namespace MedDockerAPI.Controllers
 {
@@ -12,18 +13,51 @@ namespace MedDockerAPI.Controllers
     public class UserController : ControllerBase
     {
         private readonly DatabaseContext _Context;
+        private readonly ILogger<UserController> _logger;
 
-        public UserController(DatabaseContext context)
+        public UserController(DatabaseContext context, ILogger<UserController> logger)
         {
             _Context = context;
+            _logger = logger;
         }
         [HttpPost]
-        public async Task<IActionResult> Create([FromBody] User user)
+        public async Task<IActionResult> Create([FromForm] User user)
         {
-            _Context.Users.Add(user);
-            await _Context.SaveChangesAsync();
-            return Ok();
+            _logger.LogInformation("Received CreateUser request: {@User}", user);
+
+            // Validate input
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(ModelState); // Return validation errors
+            }
+
+            try
+            {
+                // Map request to a User entity
+                var users = new User
+                {
+                    Username = user.Username,
+                    Email = user.Email,
+                    Password = user.Password // Ideally, hash the password here
+                };
+
+                // Add user to database
+                _Context.Users.Add(user);
+
+                // Commit changes to the database
+                await _Context.SaveChangesAsync();
+
+                _logger.LogInformation("User successfully created: {Username}", user.Username);
+
+                return Ok(new { Message = "User created successfully!" });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error while creating user");
+                return StatusCode(500, new { Message = "An error occurred while creating the user." });
+            }
         }
+        
 
         [HttpGet("{id}")]
         public async Task<IActionResult> GetAllUsersById(string id)
