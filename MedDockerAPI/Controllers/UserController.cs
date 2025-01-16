@@ -49,6 +49,26 @@ namespace MedDockerAPI.Controllers
             return Ok("User signed up successfully");
         }
 
+        [HttpPost("login")]
+        public async Task<IActionResult> LoginUser(UserDTO userDTO)
+        {
+            try
+            {
+                var user = await _Context.Users.SingleOrDefaultAsync(u => u.Email == userDTO.Email);
+                if(user == null || !BCrypt.Net.BCrypt.Verify(userDTO.Password, user.HashedPassword))
+                {
+                    return Unauthorized(new { message = "Invalid email or password" });
+                }
+
+                return Ok(user);
+            }
+            catch (Exception ex) 
+            {
+                Console.WriteLine($"Error in login: {ex.Message}");
+                return StatusCode(500, "Internal server error.");
+            }
+        }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetAllUsersById(string id)
         {
@@ -109,7 +129,7 @@ namespace MedDockerAPI.Controllers
             return Ok(user);
         }
         [HttpPatch]
-        public async Task<IActionResult> PatchUpdateUser(string id, [FromQuery] UserDto user)
+        public async Task<IActionResult> PatchUpdateUser(string id, [FromQuery] UserDTO user)
         {
             var existingUser = await _Context.Users.FindAsync(id);
 
@@ -164,7 +184,7 @@ namespace MedDockerAPI.Controllers
 
             return new User
             {
-                Id = Guid.NewGuid().ToString("N"),
+                ID = Guid.NewGuid().ToString("N"),
                 Email = userDTO.Email,
                 Username = userDTO.Username,
                 CreatedAt = DateTime.UtcNow.AddHours(1),
