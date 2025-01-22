@@ -108,8 +108,9 @@ namespace MedDockerAPI.Controllers
 
             return Ok(user);
         }
+
         [HttpPatch]
-        public async Task<IActionResult> PatchUpdateUser(string id, [FromQuery] UserDto user)
+        public async Task<IActionResult> PatchUpdateUser(string id, [FromQuery] UserDTO user)
         {
             var existingUser = await _Context.Users.FindAsync(id);
 
@@ -164,7 +165,7 @@ namespace MedDockerAPI.Controllers
 
             return new User
             {
-                Id = Guid.NewGuid().ToString("N"),
+                ID = Guid.NewGuid().ToString("N"),
                 Email = userDTO.Email,
                 Username = userDTO.Username,
                 CreatedAt = DateTime.UtcNow.AddHours(1),
